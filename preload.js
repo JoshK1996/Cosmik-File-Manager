@@ -26,6 +26,9 @@ contextBridge.exposeInMainWorld(
     renameFiles: (files, pattern, replacements) => 
       ipcRenderer.invoke('rename-files', files, pattern, replacements),
       
+    // Video operations
+    analyzeVideo: (filePath) => ipcRenderer.invoke('analyze-video', filePath),
+      
     // Video player operations
     openVideo: (filePath) => ipcRenderer.invoke('open-video', filePath)
   }

@@ -318,6 +318,140 @@ const useStore = create((set, get) => ({
     }
   },
   
+  // New method to detect video aspect ratios and automatically move files to H/V folders
+  detectAndMoveFilesByAspectRatio: async (filesToProcess = null) => {
+    set({ isLoading: true });
+    
+    try {
+      const { currentProject, projectFiles, projectFolders } = get();
+      
+      if (!currentProject) {
+        throw new Error('No project is currently open');
+      }
+      
+      // Find H and V folders in the project
+      let hFolder = projectFolders.find(folder => folder.name === "H");
+      let vFolder = projectFolders.find(folder => folder.name === "V");
+      
+      // Create H and V folders at the project root if they don't exist
+      if (!hFolder) {
+        console.log("H folder not found, creating at project root");
+        const createHResult = await window.api.createDirectory(path.join(currentProject.path, "H"));
+        if (!createHResult.success) {
+          throw new Error(`Failed to create H folder: ${createHResult.error}`);
+        }
+        hFolder = {
+          name: "H",
+          path: path.join(currentProject.path, "H"),
+          relativePath: "H"
+        };
+      }
+      
+      if (!vFolder) {
+        console.log("V folder not found, creating at project root");
+        const createVResult = await window.api.createDirectory(path.join(currentProject.path, "V"));
+        if (!createVResult.success) {
+          throw new Error(`Failed to create V folder: ${createVResult.error}`);
+        }
+        vFolder = {
+          name: "V",
+          path: path.join(currentProject.path, "V"),
+          relativePath: "V"
+        };
+      }
+      
+      // Determine which files to process
+      const files = filesToProcess || projectFiles;
+      
+      // Filter only video files that are not already in H or V folders
+      const videoFiles = files.filter(file => {
+        // Check if it's not already in H or V folder
+        return !file.path.includes(`/${hFolder.name}/`) && 
+               !file.path.includes(`/${vFolder.name}/`) && 
+               // Let the main process check if it's a video file
+               !file.name.includes(" - H") && 
+               !file.name.includes(" - V");
+      });
+      
+      console.log(`Found ${videoFiles.length} potential video files to analyze`);
+      
+      const results = {
+        hMoved: 0,
+        vMoved: 0,
+        errors: [],
+        skipped: 0
+      };
+      
+      // Process each video file to detect aspect ratio
+      for (const file of videoFiles) {
+        try {
+          console.log(`Analyzing file: ${file.name}`);
+          
+          // Ask the main process to analyze the video file
+          const videoInfoResult = await window.api.analyzeVideo(file.path);
+          
+          if (!videoInfoResult.success) {
+            console.log(`File ${file.name} is not a valid video or cannot be analyzed, skipping`);
+            results.skipped++;
+            continue;
+          }
+          
+          const { orientation } = videoInfoResult;
+          
+          // Determine target folder based on orientation
+          const targetFolder = orientation === 'H' ? hFolder : vFolder;
+          
+          // Generate new filename with orientation suffix
+          const fileExt = path.extname(file.name);
+          const fileNameWithoutExt = path.basename(file.name, fileExt);
+          const newFileName = `${fileNameWithoutExt} - ${orientation}${fileExt}`;
+          const targetPath = path.join(targetFolder.path, newFileName);
+          
+          console.log(`Moving video file from ${file.path} to ${targetPath} (${orientation} orientation)`);
+          
+          // Move the file to the appropriate folder with the new name
+          const moveResult = await window.api.moveFile(file.path, targetPath);
+          
+          if (moveResult.success) {
+            if (orientation === 'H') {
+              results.hMoved++;
+            } else {
+              results.vMoved++;
+            }
+          } else {
+            results.errors.push({
+              file: file.name,
+              error: moveResult.error
+            });
+          }
+        } catch (error) {
+          console.error(`Error processing file ${file.name}:`, error);
+          results.errors.push({
+            file: file.name,
+            error: error.message
+          });
+        }
+      }
+      
+      // Re-analyze project after moving files
+      await get().analyzeProjectStructure(currentProject.path);
+      
+      set({ isLoading: false });
+      
+      return {
+        success: true,
+        results
+      };
+    } catch (error) {
+      console.error("Error analyzing and moving files:", error);
+      set({ 
+        isLoading: false, 
+        errorMessage: `Failed to analyze and move files: ${error.message}` 
+      });
+      return { success: false, error: error.message };
+    }
+  },
+  
   batchRenameFiles: async (files, pattern, replacement) => {
     set({ isLoading: true });
     

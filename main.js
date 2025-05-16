@@ -3,6 +3,8 @@ const path = require('path');
 const fs = require('fs');
 const isDev = require('electron-is-dev');
 const os = require('os');
+const chokidar = require('chokidar');
+const videoUtils = require('./src/utils/videoUtils');
 
 let mainWindow;
 
@@ -341,4 +343,28 @@ ipcMain.handle('stop-drive-watcher', async () => {
   }
   
   return { success: true };
+});
+
+// Add this handler in your ipcMain.handle section
+ipcMain.handle('analyze-video', async (_, filePath) => {
+  try {
+    // Check if the file exists and is a video file
+    if (!fs.existsSync(filePath) || !videoUtils.isVideoFile(filePath)) {
+      return { success: false, error: 'File does not exist or is not a video file' };
+    }
+    
+    // Get video aspect ratio and orientation
+    const videoInfo = await videoUtils.getVideoAspectRatio(filePath);
+    
+    return {
+      success: true,
+      ...videoInfo
+    };
+  } catch (error) {
+    console.error('Error analyzing video:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
 }); 

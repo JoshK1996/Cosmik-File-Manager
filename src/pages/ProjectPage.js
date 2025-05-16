@@ -54,7 +54,8 @@ import {
   HorizontalRule as HorizontalIcon,
   CompareArrows as CompareArrowsIcon,
   Close as CloseIcon,
-  InsertDriveFile as InsertDriveFileIcon
+  InsertDriveFile as InsertDriveFileIcon,
+  AspectRatio as AspectRatioIcon
 } from '@mui/icons-material';
 import { useStore } from '../store';
 import path from 'path-browserify';
@@ -70,6 +71,7 @@ const ProjectPage = () => {
     orphanedVFiles,
     setCurrentProject,
     moveFilesToHVFolders,
+    detectAndMoveFilesByAspectRatio,
     setSelectedFiles,
     isLoading
   } = useStore();
@@ -154,6 +156,72 @@ const ProjectPage = () => {
       setNotification({
         type: 'error',
         message: `Error organizing files: ${error.message}`
+      });
+    }
+  };
+  
+  // New handler for auto-detecting video aspect ratios
+  const handleAutoDetectAspectRatio = async () => {
+    // Reset previous results
+    setOrganizingStatus({
+      inProgress: true,
+      step: 0,
+      result: null
+    });
+    
+    setNotification({
+      type: 'info',
+      message: 'Analyzing video files, please wait...'
+    });
+    
+    // Begin organizing files - show progress
+    setOrganizingStatus(prev => ({ ...prev, step: 1 }));
+    
+    // Analyze files
+    setTimeout(() => {
+      setOrganizingStatus(prev => ({ ...prev, step: 2 }));
+    }, 1000);
+    
+    try {
+      // Use selected items if any, otherwise analyze all files
+      const filesToProcess = selectedItems.length > 0 ? selectedItems : null;
+      
+      const result = await detectAndMoveFilesByAspectRatio(filesToProcess);
+      
+      // Show completed step
+      setOrganizingStatus({
+        inProgress: false,
+        step: 3,
+        result: result
+      });
+      
+      if (result.success) {
+        setNotification({
+          type: 'success',
+          message: 'Videos have been analyzed and organized by aspect ratio!'
+        });
+        
+        // Display results dialog
+        setResultDialogOpen(true);
+      } else {
+        setNotification({
+          type: 'error',
+          message: result.error || 'Failed to analyze and organize videos'
+        });
+        
+        // Display results dialog
+        setResultDialogOpen(true);
+      }
+    } catch (error) {
+      setOrganizingStatus({
+        inProgress: false,
+        step: 0,
+        result: { success: false, error: error.message }
+      });
+      
+      setNotification({
+        type: 'error',
+        message: `Error analyzing videos: ${error.message}`
       });
     }
   };
@@ -254,6 +322,7 @@ const ProjectPage = () => {
       if (tagType === "Has V Partner" && isH && !isOrphaned) return true;
       if (tagType === "Has H Partner" && isV && !isOrphaned) return true;
       if (tagType === "Regular File" && !isH && !isV) return true;
+      if (tagType === "Original File" && !file.name.includes(' - H') && !file.name.includes(' - V')) return true;
       
       return false;
     });
@@ -343,6 +412,18 @@ const ProjectPage = () => {
             disabled={organizingStatus.inProgress}
           >
             Organize Files
+          </Button>
+          
+          <Button 
+            variant="contained" 
+            color="success" 
+            startIcon={<AspectRatioIcon />}
+            onClick={handleAutoDetectAspectRatio}
+            sx={{ mr: 1 }}
+            disabled={organizingStatus.inProgress}
+            title="Detect video aspect ratios and move files to H/V folders automatically"
+          >
+            Auto-Detect Aspect Ratios
           </Button>
           
           <Button 
@@ -697,7 +778,10 @@ const ProjectPage = () => {
             label="H File" 
             color="primary" 
             variant="outlined"
-            onClick={() => handleSelectAllWithTag("Has V Partner")}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleSelectAllWithTag("Has V Partner");
+            }}
           />
           <Chip 
             size="small" 
@@ -705,7 +789,10 @@ const ProjectPage = () => {
             label="V File" 
             color="secondary" 
             variant="outlined"
-            onClick={() => handleSelectAllWithTag("Has H Partner")}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleSelectAllWithTag("Has H Partner");
+            }}
           />
           <Chip 
             size="small" 
@@ -734,7 +821,10 @@ const ProjectPage = () => {
             label="Orphaned File" 
             color="error" 
             variant="outlined"
-            onClick={() => handleSelectAllWithTag("Missing V Partner")}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleSelectAllWithTag("Missing V Partner");
+            }}
           />
           <Chip 
             size="small" 
@@ -742,7 +832,22 @@ const ProjectPage = () => {
             label="Regular File" 
             color="warning" 
             variant="outlined"
-            onClick={() => handleSelectAllWithTag("Regular File")}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleSelectAllWithTag("Regular File");
+            }}
+          />
+          
+          <Chip 
+            size="small" 
+            icon={<InsertDriveFileIcon />} 
+            label="Original File" 
+            color="info" 
+            variant="outlined"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleSelectAllWithTag("Original File");
+            }}
           />
           
           <Box sx={{ width: '100%', mt: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -934,15 +1039,21 @@ const ProjectPage = () => {
                             label={isH ? "Missing V Partner" : "Missing H Partner"} 
                             color="error"
                             icon={<WarningIcon fontSize="small" />}
-                            onClick={() => handleSelectAllWithTag(isH ? "Missing V Partner" : "Missing H Partner")}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleSelectAllWithTag(isH ? "Missing V Partner" : "Missing H Partner");
+                            }}
                           />
                         ) : (
                           <Chip 
                             size="small" 
-                            label={isH ? "Has V Partner" : (isV ? "Has H Partner" : "Regular File")}
-                            color={isH || isV ? "success" : "warning"}
+                            label={isH ? "Has V Partner" : (isV ? "Has H Partner" : "Original File")}
+                            color={isH || isV ? "success" : "info"}
                             icon={<CheckIcon fontSize="small" />}
-                            onClick={() => handleSelectAllWithTag(isH ? "Has V Partner" : (isV ? "Has H Partner" : "Regular File"))}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleSelectAllWithTag(isH ? "Has V Partner" : (isV ? "Has H Partner" : "Original File"));
+                            }}
                           />
                         )}
                       </TableCell>
