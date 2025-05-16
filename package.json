@@ -1,0 +1,64 @@
+{
+  "name": "cosmik-file-manager",
+  "version": "1.0.0",
+  "description": "A modern file management application for organizing media files",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "concurrently \"npm run start-react\" \"npm run start-electron\"",
+    "start-react": "cross-env BROWSER=none react-scripts start",
+    "start-electron": "wait-on http://localhost:3000 && electron .",
+    "build": "react-scripts build && electron-builder",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject"
+  },
+  "build": {
+    "appId": "com.cosmik.filemanager",
+    "productName": "Cosmik File Manager",
+    "files": [
+      "build/**/*",
+      "main.js",
+      "preload.js",
+      "electron/**/*"
+    ],
+    "directories": {
+      "buildResources": "assets"
+    }
+  },
+  "author": "Cosmik AI",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "cross-env": "^7.0.3",
+    "electron": "^28.1.0",
+    "electron-builder": "^24.9.1",
+    "wait-on": "^7.2.0"
+  },
+  "dependencies": {
+    "@emotion/react": "^11.11.1",
+    "@emotion/styled": "^11.11.0",
+    "@mui/icons-material": "^5.15.1",
+    "@mui/material": "^5.15.1",
+    "chokidar": "^3.5.3",
+    "electron-is-dev": "^2.0.0",
+    "path-browserify": "^1.0.1",
+    "process": "^0.11.10",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.21.0",
+    "react-scripts": "5.0.1",
+    "zustand": "^4.4.7"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  }
+}
