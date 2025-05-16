@@ -8,7 +8,10 @@
     "dev": "concurrently \"npm run start-react\" \"npm run start-electron\"",
     "start-react": "cross-env BROWSER=none react-scripts start",
     "start-electron": "wait-on http://localhost:3000 && electron .",
-    "build": "react-scripts build && electron-builder",
+    "build": "react-scripts build",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder",
+    "build-win": "npm run build && electron-builder --win",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
@@ -22,7 +25,24 @@
       "electron/**/*"
     ],
     "directories": {
-      "buildResources": "assets"
+      "buildResources": "assets",
+      "output": "dist"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true
     }
   },
   "author": "Cosmik AI",
