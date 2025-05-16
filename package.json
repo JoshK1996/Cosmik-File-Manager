@@ -12,7 +12,7 @@
     "build": "react-scripts build",
     "pack": "electron-builder --dir",
     "dist": "electron-builder",
-    "build-win": "react-scripts build && electron-builder --win",
+    "build-win": "react-scripts build && electron-builder --win -c.win.target=portable --publish=never",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
@@ -28,10 +28,14 @@
       "buildResources": "assets",
       "output": "dist"
     },
+    "extraMetadata": {
+      "main": "./main.js"
+    },
     "win": {
       "target": [
         "portable"
-      ]
+      ],
+      "forceCodeSigning": false
     }
   },
   "author": "Cosmik AI",
